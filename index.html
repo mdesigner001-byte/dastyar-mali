@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>دستیار مالی</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f4f6f8;color:#17202a}
+.wrap{max-width:1050px;margin:auto;padding:18px}.top{background:#17202a;color:#fff;border-radius:18px;padding:20px;margin-bottom:16px}
+h1{margin:0 0 6px;font-size:25px}.sub{opacity:.75;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 3px 12px #0000000b}.label{font-size:12px;color:#68737d}.value{font-size:22px;font-weight:bold;margin-top:7px}
+.panel{background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 3px 12px #0000000b}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.field label{display:block;font-size:12px;margin-bottom:5px;color:#59636d}.field input,.field select{width:100%;padding:11px;border:1px solid #d9dee3;border-radius:10px;font-size:14px;background:#fff}
+button{border:0;border-radius:10px;padding:11px 15px;font-size:14px;cursor:pointer}.primary{background:#17202a;color:white}.secondary{background:#edf1f4}.danger{background:#ffe9e9;color:#a11}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:11px 8px;border-bottom:1px solid #edf0f2;text-align:right;font-size:13px}th{color:#68737d;font-weight:600}
+.empty{text-align:center;color:#89939c;padding:25px}.person{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee}
+@media(max-width:700px){.cards{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:430px){.grid{grid-template-columns:1fr}.wrap{padding:10px}}
+</style>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#17202a"></head>
+<body>
+<div class="wrap">
+<div class="top"><h1>دستیار مالی</h1><div class="sub">ثبت و مدیریت هزینه‌ها و پرداخت‌ها</div></div>
+<div class="cards">
+<div class="card"><div class="label">جمع کل دریافتی‌ها</div><div class="value" id="incomeTotal">۰ تومان</div></div>
+<div class="card"><div class="label">جمع کل هزینه‌ها</div><div class="value" id="expenseTotal">۰ تومان</div></div>
+<div class="card"><div class="label">مانده</div><div class="value" id="balance">۰ تومان</div></div>
+<div class="card"><div class="label">تعداد تراکنش‌ها</div><div class="value" id="count">۰</div></div>
+</div>
+
+<div class="panel">
+<h3 id="formTitle">ثبت هزینه / پرداخت جدید</h3>
+<div class="actions" style="margin-top:0;margin-bottom:12px">
+<button id="expenseBtn" class="primary" onclick="setType('expense')">➖ هزینه</button>
+<button id="incomeBtn" class="secondary" onclick="setType('income')">➕ دریافتی</button>
+</div>
+<div class="grid">
+<div class="field"><label>تاریخ</label><input id="date" placeholder="۱۴۰۵/۰۷/۱۱"></div>
+<div class="field"><label id="personLabel">پرداخت به / طرف حساب</label><input id="person" placeholder="مثلاً علی یا مشتری"></div>
+<div class="field"><label>مبلغ (تومان)</label><input id="amount" type="number" min="0" placeholder="25000000"></div>
+<div class="field"><label id="categoryLabel">نوع هزینه</label><select id="category"><option>دستمزد</option><option>خرید</option><option>مصالح</option><option>حمل و نقل</option><option>متفرقه</option></select></div>
+</div>
+<div class="field" style="margin-top:10px"><label>توضیحات</label><input id="note" placeholder="مثلاً بابت اجرای سقف یا دریافت از مشتری"></div>
+<div class="actions"><button class="primary" onclick="addTx()">ثبت تراکنش</button></div>
+</div>
+
+<div class="panel">
+<h3>تراکنش‌ها</h3>
+<div class="actions">
+<input id="search" oninput="render()" placeholder="جستجو..." style="flex:1;min-width:180px;padding:11px;border:1px solid #d9dee3;border-radius:10px">
+<button class="secondary" onclick="exportData()">پشتیبان</button>
+<button class="secondary" onclick="document.getElementById('file').click()">بازیابی</button>
+<input id="file" type="file" accept=".json" hidden onchange="importData(event)">
+<button class="danger" onclick="clearAll()">حذف همه</button>
+</div>
+<div style="overflow:auto"><table><thead><tr><th>تاریخ</th><th>طرف حساب</th><th>مبلغ</th><th>نوع تراکنش</th><th>دسته‌بندی</th><th>توضیحات</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+
+<div class="panel"><h3>تراکنش‌های بانکی پیشنهادی</h3><p style="font-size:12px;color:#68737d">موارد شناسایی‌شده را قبل از ثبت بررسی کن؛ تشخیص مبلغ و نوع تراکنش ممکن است اشتباه باشد.</p><div id="bankDrafts"><div class="empty">هنوز تراکنش بانکی پیشنهادی وجود ندارد.</div></div></div>
+<div class="panel"><h3>خلاصه پرداخت به افراد</h3><div id="people"></div></div>
+</div>
+
+<script>
+const KEY='financial_assistant_v1';let tx=JSON.parse(localStorage.getItem(KEY)||'[]');let currentType='expense';
+const fa=n=>Number(n||0).toLocaleString('fa-IR');
+function save(){localStorage.setItem(KEY,JSON.stringify(tx));render()}
+function setType(type){
+ currentType=type;
+ const expense=type==='expense';
+ document.getElementById('expenseBtn').className=expense?'primary':'secondary';
+ document.getElementById('incomeBtn').className=expense?'secondary':'primary';
+ document.getElementById('formTitle').textContent=expense?'ثبت هزینه / پرداخت جدید':'ثبت دریافتی جدید';
+ document.getElementById('personLabel').textContent=expense?'پرداخت به / طرف حساب':'دریافت از / طرف حساب';
+ document.getElementById('categoryLabel').textContent=expense?'نوع هزینه':'نوع دریافتی';
+ const cat=document.getElementById('category');
+ cat.innerHTML=expense?'<option>دستمزد</option><option>خرید</option><option>مصالح</option><option>حمل و نقل</option><option>متفرقه</option>':'<option>دریافت از مشتری</option><option>دریافت بابت فروش</option><option>دریافت طلب</option><option>سایر دریافتی</option>';
+ document.getElementById('person').placeholder=expense?'مثلاً علی':'مثلاً مشتری';
+ document.getElementById('note').placeholder=expense?'مثلاً بابت اجرای سقف':'مثلاً بابت پروژه سالن';
+}
+function addTx(){
+ const person=document.getElementById('person').value.trim(),amount=Number(document.getElementById('amount').value);
+ if(!person||!amount){alert('طرف حساب و مبلغ را وارد کن.');return}
+ tx.unshift({id:Date.now(),date:document.getElementById('date').value.trim()||'—',person,amount,type:currentType,category:document.getElementById('category').value,note:document.getElementById('note').value.trim()});
+ ['person','amount','note'].forEach(id=>document.getElementById(id).value='');save();
+}
+function del(id){if(confirm('این تراکنش حذف شود؟')){tx=tx.filter(x=>x.id!==id);save()}}
+function render(){
+ const q=document.getElementById('search').value.trim().toLowerCase();
+ const list=tx.filter(x=>(x.person+' '+x.note+' '+x.category+' '+(x.type||'expense')).toLowerCase().includes(q));
+ document.getElementById('rows').innerHTML=list.length?list.map(x=>{
+  const type=x.type==='income'?'دریافتی':'هزینه';
+  return `<tr><td>${x.date}</td><td>${x.person}</td><td>${fa(x.amount)}</td><td>${type}</td><td>${x.category||'—'}</td><td>${x.note||'—'}</td><td><button class="danger" onclick="del(${x.id})">حذف</button></td></tr>`;
+ }).join(''):`<tr><td colspan="7" class="empty">هنوز تراکنشی ثبت نشده است.</td></tr>`;
+ const income=tx.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
+ const expense=tx.filter(x=>x.type!=='income').reduce((s,x)=>s+x.amount,0);
+ document.getElementById('incomeTotal').textContent=fa(income)+' تومان';
+ document.getElementById('expenseTotal').textContent=fa(expense)+' تومان';
+ document.getElementById('balance').textContent=fa(income-expense)+' تومان';
+ document.getElementById('count').textContent=fa(tx.length);
+ const p={};tx.filter(x=>x.type!=='income').forEach(x=>p[x.person]=(p[x.person]||0)+x.amount);
+ const peopleCount=document.getElementById('peopleCount'); if(peopleCount) peopleCount.textContent=fa(Object.keys(p).length);
+ document.getElementById('people').innerHTML=Object.keys(p).length?Object.entries(p).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="person"><span>${k}</span><b>${fa(v)} تومان</b></div>`).join(''):'<div class="empty">هنوز پرداختی به فردی ثبت نشده است.</div>';
+}
+function exportData(){const blob=new Blob([JSON.stringify(tx,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='دستیار-مالی-پشتیبان.json';a.click()}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;tx=d;save();alert('بازیابی شد.')}catch{alert('فایل معتبر نیست.')}};r.readAsText(f)}
+function clearAll(){if(confirm('همه تراکنش‌ها حذف شوند؟')){tx=[];save()}}
+function consumePendingBankItems(){
+ try {
+  if(!window.BankBridge || !BankBridge.takePending) return;
+  const raw=BankBridge.takePending(); const items=JSON.parse(raw||'[]');
+  if(!Array.isArray(items)||!items.length)return;
+  const host=document.getElementById('bankDrafts');
+  if(host.querySelector('.empty'))host.innerHTML='';
+  items.forEach((d)=>{
+   const card=document.createElement('div');card.className='person';card.style.display='block';card.style.padding='12px 0';
+   const type=d.type==='income'?'دریافتی':d.type==='expense'?'هزینه':'نیازمند بررسی';
+   card.innerHTML=`<div><b>${type}</b> · ${fa(d.amount)} تومان</div><div style="font-size:12px;color:#68737d">مبلغ تبدیل‌شده از ریال پیامک بانک ملی</div><div style="font-size:12px;color:#68737d;margin:5px 0">${d.source||'بانک'} | ${d.date||'—'} | ${d.note||''}</div><div class="actions"><button class="primary">بررسی و تکمیل</button><button class="secondary">رد کردن</button></div>`;
+   const buttons=card.querySelectorAll('button');
+   buttons[0].onclick=()=>{currentType=d.type==='income'?'income':'expense';setType(currentType);document.getElementById('date').value=d.date||'';document.getElementById('person').value=d.person||'تراکنش بانکی';document.getElementById('amount').value=d.amount||'';document.getElementById('note').value=d.note||'ثبت از '+(d.source||'بانک');document.getElementById('category').value=currentType==='income'?'متفرقه':'متفرقه';document.getElementById('amount').focus();window.scrollTo({top:0,behavior:'smooth'});card.remove();if(!host.children.length)host.innerHTML='<div class="empty">تراکنش پیشنهادی دیگری وجود ندارد.</div>';};
+   buttons[1].onclick=()=>{card.remove();if(!host.children.length)host.innerHTML='<div class="empty">تراکنش پیشنهادی دیگری وجود ندارد.</div>';};host.appendChild(card);
+  });
+ } catch(e) { console.log('Bank draft processing failed'); }
+}
+setType('expense');render();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script></body></html>
